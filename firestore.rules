@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Rules for user-specific data
+    match /users/{userId}/{collectionName}/{document=**} {
+      // Allow anyone to read the clinic data (services, promotions, etc.)
+      // This enables the public website to function
+      allow read: if true;
+      
+      // Only the owner of the data can write to it
+      allow write: if isOwner(userId);
+    }
+    
+    // Specifically protect sensitive content if needed
+    // (In this app, all content in users/{userId} is currently intended for public display)
+  }
+}

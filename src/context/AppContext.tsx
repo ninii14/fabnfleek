@@ -162,7 +162,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated || !auth.currentUser) {
+    // Determine which user's data to show
+    // 1. If logged in, show the logged-in user's data (for CMS)
+    // 2. If not logged in, show the data of the designated public user
+    const publicUserId = import.meta.env.VITE_PUBLIC_USER_ID;
+    const activeUserId = isAuthenticated && auth.currentUser ? auth.currentUser.uid : publicUserId;
+
+    if (!activeUserId) {
       setServices([]);
       setPromotions([]);
       setGallery([]);
@@ -171,31 +177,30 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    const userId = auth.currentUser.uid;
-
-    const unsubServices = onSnapshot(collection(db, `users/${userId}/services`), (snapshot) => {
+    const unsubServices = onSnapshot(collection(db, `users/${activeUserId}/services`), (snapshot) => {
       setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, `users/${userId}/services`));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, `users/${activeUserId}/services`));
 
-    const unsubPromotions = onSnapshot(collection(db, `users/${userId}/promotions`), (snapshot) => {
+    const unsubPromotions = onSnapshot(collection(db, `users/${activeUserId}/promotions`), (snapshot) => {
       setPromotions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Promotion)));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, `users/${userId}/promotions`));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, `users/${activeUserId}/promotions`));
 
-    const unsubGallery = onSnapshot(collection(db, `users/${userId}/gallery`), (snapshot) => {
+    const unsubGallery = onSnapshot(collection(db, `users/${activeUserId}/gallery`), (snapshot) => {
       setGallery(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GalleryImage)));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, `users/${userId}/gallery`));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, `users/${activeUserId}/gallery`));
 
-    const unsubTeam = onSnapshot(collection(db, `users/${userId}/team`), (snapshot) => {
+    const unsubTeam = onSnapshot(collection(db, `users/${activeUserId}/team`), (snapshot) => {
       setTeam(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeamMember)));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, `users/${userId}/team`));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, `users/${activeUserId}/team`));
 
-    const unsubContent = onSnapshot(doc(db, `users/${userId}/content`, 'website'), (docSnap) => {
+    const unsubContent = onSnapshot(doc(db, `users/${activeUserId}/content`, 'website'), (docSnap) => {
       if (docSnap.exists()) {
         setContent(docSnap.data() as WebsiteContent);
-      } else {
-        setDoc(doc(db, `users/${userId}/content`, 'website'), initialContent).catch(e => console.error(e));
+      } else if (isAuthenticated && activeUserId === auth.currentUser?.uid) {
+        // Only initialize default content if the owner is logged in
+        setDoc(doc(db, `users/${activeUserId}/content`, 'website'), initialContent).catch(e => console.error(e));
       }
-    }, (error) => handleFirestoreError(error, OperationType.GET, `users/${userId}/content/website`));
+    }, (error) => handleFirestoreError(error, OperationType.GET, `users/${activeUserId}/content/website`));
 
     return () => {
       unsubServices();

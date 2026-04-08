@@ -17,7 +17,12 @@ export default function Login() {
       await signInWithEmailAndPassword(auth, email, password);
       navigate('/admin');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in');
+      console.error('Login Error:', err);
+      if (err.code === 'auth/network-request-failed') {
+        setError('Network error: Please ensure your domain is added to "Authorized Domains" in Firebase Console and check your internet connection/VPN.');
+      } else {
+        setError(err.message || 'Failed to sign in');
+      }
     }
   };
 
@@ -27,7 +32,12 @@ export default function Login() {
       await signInWithPopup(auth, googleProvider);
       navigate('/admin');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Google');
+      console.error('Google Sign-In Error:', err);
+      if (err.code === 'auth/network-request-failed') {
+        setError('Network error: Please ensure your domain is added to "Authorized Domains" in Firebase Console.');
+      } else {
+        setError(err.message || 'Failed to sign in with Google');
+      }
     }
   };
 
